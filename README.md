@@ -1,17 +1,17 @@
-# trzsz-go ( trz / tsz ) - the go version of trzsz
+## trzsz-go – Native trzsz Support for Local Shell Terminals and Go Applications
 
 [![MIT License](https://img.shields.io/badge/license-MIT-green.svg?style=flat)](https://choosealicense.com/licenses/mit/)
 [![GitHub Release](https://img.shields.io/github/v/release/trzsz/trzsz-go)](https://github.com/trzsz/trzsz-go/releases)
 [![WebSite](https://img.shields.io/badge/WebSite-https%3A%2F%2Ftrzsz.github.io%2Fgo-blue?style=flat)](https://trzsz.github.io/go)
 [![中文文档](https://img.shields.io/badge/%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3-https%3A%2F%2Ftrzsz.github.io%2Fcn%2Fgo-blue?style=flat)](https://trzsz.github.io/cn/go)
 
-`trzsz-go` makes all terminals that support local shell to support [trzsz](https://trzsz.github.io/) ( trz / tsz ), which similar to ( rz / sz ), and compatible with tmux.
+**trzsz-go** is a CLI tool that enables native trzsz (trz / tsz) file transfer support in terminals with local shell support. It can also be embedded into Go-based terminal applications to provide native trzsz integration.
 
-⭐ It's recommended to use the go version of `trzsz` on the server, use [trzsz-ssh ( tssh )](https://trzsz.github.io/ssh) on local.
+⭐ It's recommended to use the go version of `trzsz` on the server, use [trzsz-ssh ( tssh )](https://trzsz.github.io/tssh) on local.
 
-_Please check [https://trzsz.github.io](https://trzsz.github.io) for more information about `trzsz ( trz / tsz )`._
+_Please check [https://trzsz.github.io/py](https://trzsz.github.io/py) for more information about `trzsz ( trz / tsz )`._
 
-## Installation
+### Installation
 
 - Install with apt on Ubuntu
 
@@ -200,9 +200,9 @@ _Please check [https://trzsz.github.io](https://trzsz.github.io) for more inform
 
   </details>
 
-## Usage
+### Usage
 
-### Use on the local computer
+#### Use on the local computer
 
 - Add `trzsz` before the shell to support trzsz ( trz / tsz ), e.g.:
 
@@ -219,7 +219,7 @@ _Please check [https://trzsz.github.io](https://trzsz.github.io) for more inform
   trzsz --dragfile ssh x.x.x.x
   ```
 
-### Use on the jump server
+#### Use on the jump server
 
 - If using `tmux` on the jump server, use `trzsz --relay ssh` to login to the remote server, e.g.:
 
@@ -229,29 +229,29 @@ _Please check [https://trzsz.github.io](https://trzsz.github.io) for more inform
   trzsz --relay ssh remote_server
   ```
 
-### Use on the remote server
+#### Use on the remote server
 
 - Similar to lrzsz ( rz / sz ), command `trz` to upload files, command `tsz /path/to/file` to download files.
 
-- For more information, check the website of trzsz: [https://trzsz.github.io](https://trzsz.github.io/). 中文文档：[https://trzsz.github.io/cn/](https://trzsz.github.io/cn/)
+- For more information, check the website of trzsz: [https://trzsz.github.io/py](https://trzsz.github.io/py). 中文文档：[https://trzsz.github.io/cn/py](https://trzsz.github.io/cn/py)
 
-## Suggestion
+### Suggestion
 
 - It is recommended to set `alias ssh="trzsz ssh"` for convenience, `alias ssh="trzsz -d ssh"` for dragging files to upload.
 
 - If using `tmux` on the local computer, run `tmux` ( without `trzsz` ) first, then `trzsz ssh` to login.
 
-## Zmodem support
+### Zmodem support
 
 - Use `-z` or `--zmodem` to enable the `rz / sz` feature. e.g., `trzsz -z ssh remote_server`.
 
 - `lrzsz` needs to be installed on the client ( local computer ). e.g., `brew install lrzsz`, `apt install lrzsz`, etc.
 
-- `trzsz --zmodem ssh xxx` is not supported on Windows. You can use [trzsz-ssh ( tssh )](https://trzsz.github.io/ssh) instead, `tssh --zmodem xxx`.
+- `trzsz --zmodem ssh xxx` is not supported on Windows. You can use [trzsz-ssh ( tssh )](https://trzsz.github.io/tssh) instead, `tssh --zmodem xxx`.
 
 - About the progress, the transferred and speed are not precise, there will be some deviation. It just indicating that the transfer is in progress.
 
-## Clipboard integration
+### Clipboard integration
 
 - Use `-o` or `--osc52` to enable the clipboard integration feature. e.g., `trzsz -o ssh remote_server`.
 
@@ -259,7 +259,7 @@ _Please check [https://trzsz.github.io](https://trzsz.github.io) for more inform
 
 - On Linux, clipboard integration requires `xclip` or `xsel` command to be installed.
 
-## Configuration
+### Configuration
 
 `trzsz` looks for configuration at `~/.trzsz.conf` ( `C:\Users\your_name\.trzsz.conf` on Windows ), e.g.:
 
@@ -278,7 +278,7 @@ ProgressColorPair = B14FFF 00FFA3
 
 - The `ProgressColorPair` configures the color of the progress bar. You need to configure 2 colors and do not include `#`. The progress bar will gradient from the first color to the second color.
 
-## Trouble shooting
+### Trouble shooting
 
 - If using [MSYS2](https://www.msys2.org/) or [Git Bash](https://www.atlassian.com/git/tutorials/git-bash) on windows, and getting an error `The handle is invalid`.
 
@@ -290,7 +290,7 @@ ProgressColorPair = B14FFF 00FFA3
 
   - In `MSYS2`, e.g.: `winpty trzsz /c/Windows/System32/OpenSSH/ssh.exe x.x.x.x`.
   - In `Cygwin`, e.g.: `trzsz "C:\Windows\System32\OpenSSH\ssh.exe" x.x.x.x`.
-  - ⭐ Recommended to use [trzsz-ssh](https://trzsz.github.io/ssh) ( tssh ) instead, `tssh` is same as `trzsz ssh`.
+  - ⭐ Recommended to use [trzsz-ssh](https://trzsz.github.io/tssh) ( tssh ) instead, `tssh` is same as `trzsz ssh`.
 
 - Dragging files doesn't upload?
   - Don't forget the `--dragfile` option. e.g.: `trzsz -d ssh x.x.x.x`.
@@ -299,28 +299,28 @@ ProgressColorPair = B14FFF 00FFA3
   - The `cmd` and `PowerShell` only support draging one file into it.
   - On the Windows Terminal, drag files to the top left where shows `Paste path to file`.
 
-## Development
+### Development
 
 Want to write your own ssh client that supports trzsz? Please check the [go ssh client example](https://github.com/trzsz/trzsz-go/blob/main/examples/ssh_client.go).
 
-## Screenshot
+### Screenshot
 
-#### Windows
+##### Windows
 
 ![windows trzsz ssh](https://trzsz.github.io/images/cmd_trzsz.gif)
 
-#### Ubuntu
+##### Ubuntu
 
 ![ubuntu trzsz ssh](https://trzsz.github.io/images/ubuntu_trzsz.gif)
 
-#### Drag files
+##### Drag files
 
 ![drag files ssh](https://trzsz.github.io/images/drag_files.gif)
 
-## Contact
+### Contact
 
 Feel free to email the author <lonnywong@qq.com>, or create an [issue](https://github.com/trzsz/trzsz-go/issues). Welcome to join the QQ group: 318578930.
 
-## Sponsor
+### Sponsor
 
 [❤️ Sponsor trzsz ❤️](https://github.com/trzsz), buy the author a drink 🍺 ? Thank you for your support!
