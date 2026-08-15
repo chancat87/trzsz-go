@@ -81,6 +81,7 @@ type transferConfig struct {
 	TmuxOutputJunk  bool         `json:"tmux_output_junk"`
 	CompressType    compressType `json:"compress"`
 	Fork            bool         `json:"fork"`
+	ClientFiles     []string     `json:"client_files"`
 }
 
 type trzszTransfer struct {
@@ -232,7 +233,9 @@ func (t *trzszTransfer) connectToTunnel(connector func(int) net.Conn, uniqueID s
 
 func (t *trzszTransfer) cleanup() {
 	if conn := t.tunnelConn.Load(); conn != nil {
-		_ = (*conn).Close()
+		// In tssh UDP mode, closing the tunnel immediately may cause the final data packets to be lost.
+		// Delay closing by 1 second as a best effort to deliver the final data.
+		time.AfterFunc(time.Second, func() { _ = (*conn).Close() })
 	}
 }
 
@@ -637,7 +640,8 @@ func (t *trzszTransfer) recvAction() (*transferAction, error) {
 	return action, nil
 }
 
-func (t *trzszTransfer) sendConfig(args *baseArgs, action *transferAction, escapeChars [][]unicode, tmuxMode tmuxModeType, tmuxPaneWidth int32) error {
+func (t *trzszTransfer) sendConfig(args *baseArgs, action *transferAction, escapeChars [][]unicode,
+	tmuxMode tmuxModeType, tmuxPaneWidth int32, clientFiles []string) error {
 	cfgMap := map[string]any{
 		"lang": "go",
 	}
@@ -678,6 +682,9 @@ func (t *trzszTransfer) sendConfig(args *baseArgs, action *transferAction, escap
 	}
 	if args.Compress != kCompressAuto {
 		cfgMap["compress"] = args.Compress
+	}
+	if len(clientFiles) > 0 {
+		cfgMap["client_files"] = clientFiles
 	}
 	cfgStr, err := json.Marshal(cfgMap)
 	if err != nil {

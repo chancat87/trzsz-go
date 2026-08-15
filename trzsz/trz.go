@@ -34,9 +34,19 @@ import (
 	"golang.org/x/term"
 )
 
+type multiStr struct {
+	values []string
+}
+
+func (v *multiStr) UnmarshalText(b []byte) error {
+	v.values = append(v.values, string(b))
+	return nil
+}
+
 type trzArgs struct {
 	baseArgs
-	Path string `arg:"positional" default:"." help:"path to save file(s). (default: current directory)"`
+	Files multiStr `arg:"-F,--file" help:"absolute path of a file or directory on the client\nto upload (can be specified multiple times)"`
+	Path  string   `arg:"positional" default:"." help:"path to save file(s). (default: current directory)"`
 }
 
 func (trzArgs) Description() string {
@@ -93,7 +103,7 @@ func recvFiles(transfer *trzszTransfer, args *trzArgs, tmuxMode tmuxModeType, tm
 	}
 
 	escapeChars := getEscapeChars(args.Escape)
-	if err := transfer.sendConfig(&args.baseArgs, action, escapeChars, tmuxMode, tmuxPaneWidth); err != nil {
+	if err := transfer.sendConfig(&args.baseArgs, action, escapeChars, tmuxMode, tmuxPaneWidth, args.Files.values); err != nil {
 		return err
 	}
 
@@ -173,7 +183,9 @@ func TrzMain() int {
 	listener, port := listenForTunnel()
 
 	mode := "R"
-	if args.Directory {
+	if len(args.Files.values) > 0 {
+		mode = "F"
+	} else if args.Directory {
 		mode = "D"
 	}
 	_, _ = fmt.Fprintf(os.Stdout, "\x1b[s::TRZSZ:TRANSFER:%s:%s:%013d:%d\r\n", mode, kTrzszVersion, uniqueID, port)

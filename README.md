@@ -266,6 +266,7 @@ _Please check [https://trzsz.github.io/py](https://trzsz.github.io/py) for more 
 ```
 DefaultUploadPath =
 DefaultDownloadPath = /Users/username/Downloads/
+AllowedAutoUploadDirs = ~/Downloads/ '/Users/username/My Documents/'
 DragFileUploadCommand = trz -y
 ProgressColorPair = B14FFF 00FFA3
 ```
@@ -273,6 +274,10 @@ ProgressColorPair = B14FFF 00FFA3
 - If the `DefaultUploadPath` is not empty, the path will be opened by default while choosing upload files.
 
 - If the `DefaultDownloadPath` is not empty, downloading files will be saved to the path automatically instead of asking each time.
+
+- The `AllowedAutoUploadDirs` configures the directories allowed for automatic upload (without popping up a file selection dialog). You can configure one or multiple paths separated by spaces. If a path contains spaces, wrap the entire path in single or double quotes. The configured paths must be absolute paths or start with `~/`.
+
+  > ⚠️ **Security Warning:** Please use this feature with caution. If you log into a malicious server, the server could stealthily steal all files under the configured directories without your confirmation.
 
 - The default value of `DragFileUploadCommand` is `trz`, configure it to `trz -y` if you want to overwrite the existing files, configure it to `rz` if you want to use `rz` to upload.
 

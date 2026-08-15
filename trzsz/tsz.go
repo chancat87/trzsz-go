@@ -92,7 +92,7 @@ func sendFiles(transfer *trzszTransfer, files []*sourceFile, args *tszArgs, tmux
 	}
 
 	var escapeChars [][]unicode
-	if err := transfer.sendConfig(&args.baseArgs, action, escapeChars, tmuxMode, tmuxPaneWidth); err != nil {
+	if err := transfer.sendConfig(&args.baseArgs, action, escapeChars, tmuxMode, tmuxPaneWidth, nil); err != nil {
 		return err
 	}
 

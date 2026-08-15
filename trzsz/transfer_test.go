@@ -145,7 +145,7 @@ func TestTransferConfig(t *testing.T) {
 
 	escapeChars := getEscapeChars(true)
 	err := transfer.sendConfig(&baseArgs{Quiet: true, Overwrite: true, Binary: true, Escape: true, Directory: true,
-		Bufsize: bufferSize{1024}, Timeout: 10}, &transferAction{Protocol: 2}, escapeChars, tmuxNormalMode, 88)
+		Bufsize: bufferSize{1024}, Timeout: 10}, &transferAction{Protocol: 2}, escapeChars, tmuxNormalMode, 88, nil)
 	assert.Nil(err)
 	writer.assertBufferCount(1)
 

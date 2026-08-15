@@ -266,6 +266,7 @@ _有关 `trzsz ( trz / tsz )` 更详细的文档，请查看 [https://trzsz.gith
 ```
 DefaultUploadPath =
 DefaultDownloadPath = /Users/username/Downloads/
+AllowedAutoUploadDirs = ~/Downloads/ '/Users/username/My Documents/'
 DragFileUploadCommand = trz -y
 ProgressColorPair = B14FFF 00FFA3
 ```
@@ -273,6 +274,10 @@ ProgressColorPair = B14FFF 00FFA3
 - 如果 `DefaultUploadPath` 不为空，上传选择文件时会默认打开此目录。
 
 - 如果 `DefaultDownloadPath` 不为空，下载文件时会自动下载到此目录（ 不需要再弹窗选择路径 ）。
+
+- `AllowedAutoUploadDirs` 用于配置允许自动上传的目录（无需弹出文件选择框）。你可以配置一个或多个路径，使用空格分隔。如果路径中包含空格，请使用单引号或双引号将整个路径包裹起来。要求配置绝对路径，或者以 `~/` 开头。
+
+  > ⚠️ **安全风险：** 请谨慎配置此功能。如果你登录了恶意的服务器，服务器可能会在不经你确认的情况下，偷偷地将这些配置目录下的所有文件全部偷走。
 
 - `DragFileUploadCommand` 的默认值是 `trz`，如果想上传时覆盖现有文件可配置成 `trz -y`，如果想使用 `rz` 上传可配置成 `rz`。
 

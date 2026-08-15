@@ -78,6 +78,7 @@ type TrzszFilter struct {
 	skipUploadCommand     atomic.Bool
 	uploadCommandIsNotTrz atomic.Bool
 	logger                *traceLogger
+	allowedAutoUploadDirs atomic.Pointer[[]string]
 	defaultUploadPath     atomic.Pointer[string]
 	defaultDownloadPath   atomic.Pointer[string]
 	dragFileUploadCommand atomic.Pointer[string]
@@ -205,27 +206,59 @@ func (filter *TrzszFilter) ResetTerminal() {
 	}
 }
 
+// SetAllowedAutoUploadDirs sets the directories allowed for auto upload.
+func (filter *TrzszFilter) SetAllowedAutoUploadDirs(dirs string) error {
+	var candidateDirs []string
+	if dirs != "" {
+		if info, err := os.Stat(dirs); err == nil && info.IsDir() {
+			candidateDirs = []string{dirs}
+		} else if paths, err := shlex.Split(dirs); err == nil {
+			candidateDirs = paths
+		}
+	}
+
+	var allowedDirs []string
+	for _, path := range candidateDirs {
+		dir, err := resolveAbsoluteDir(path)
+		if err != nil {
+			return err
+		}
+		allowedDirs = append(allowedDirs, dir)
+	}
+
+	filter.allowedAutoUploadDirs.Store(&allowedDirs)
+	return nil
+}
+
 // SetDefaultUploadPath sets the default open path while choosing upload files.
-func (filter *TrzszFilter) SetDefaultUploadPath(path string) {
+func (filter *TrzszFilter) SetDefaultUploadPath(path string) error {
 	if path == "" {
 		filter.defaultUploadPath.Store(&path)
-		return
+		return nil
 	}
-	path = resolveHomeDir(path)
-	if !strings.HasSuffix(path, string(os.PathSeparator)) {
-		path += string(os.PathSeparator)
+	dir, err := resolveAbsoluteDir(path)
+	if err != nil {
+		return err
 	}
-	filter.defaultUploadPath.Store(&path)
+	if !strings.HasSuffix(dir, string(os.PathSeparator)) {
+		dir += string(os.PathSeparator)
+	}
+	filter.defaultUploadPath.Store(&dir)
+	return nil
 }
 
 // SetDefaultDownloadPath sets the path to automatically save while downloading files.
-func (filter *TrzszFilter) SetDefaultDownloadPath(path string) {
+func (filter *TrzszFilter) SetDefaultDownloadPath(path string) error {
 	if path == "" {
 		filter.defaultDownloadPath.Store(&path)
-		return
+		return nil
 	}
-	path = resolveHomeDir(path)
-	filter.defaultDownloadPath.Store(&path)
+	dir, err := resolveAbsoluteDir(path)
+	if err != nil {
+		return err
+	}
+	filter.defaultDownloadPath.Store(&dir)
+	return nil
 }
 
 // SetDragFileUploadCommand sets the command to execute while dragging files to upload.
@@ -285,7 +318,8 @@ func (filter *TrzszFilter) readTrzszConfig() {
 	if err != nil {
 		return
 	}
-	file, err := os.Open(filepath.Join(home, ".trzsz.conf"))
+	path := filepath.Join(home, ".trzsz.conf")
+	file, err := os.Open(path)
 	if err != nil {
 		return
 	}
@@ -307,15 +341,26 @@ func (filter *TrzszFilter) readTrzszConfig() {
 			continue
 		}
 		switch {
+		case name == "allowedautouploaddirs" && filter.allowedAutoUploadDirs.Load() == nil:
+			if err := filter.SetAllowedAutoUploadDirs(value); err != nil {
+				warning("AllowedAutoUploadDirs %q is invalid: %v", value, err)
+			}
 		case name == "defaultuploadpath" && filter.defaultUploadPath.Load() == nil:
-			filter.SetDefaultUploadPath(value)
+			if err := filter.SetDefaultUploadPath(value); err != nil {
+				warning("DefaultUploadPath %q is invalid: %v", value, err)
+			}
 		case name == "defaultdownloadpath" && filter.defaultDownloadPath.Load() == nil:
-			filter.SetDefaultDownloadPath(value)
+			if err := filter.SetDefaultDownloadPath(value); err != nil {
+				warning("DefaultDownloadPath %q is invalid: %v", value, err)
+			}
 		case name == "dragfileuploadcommand" && filter.dragFileUploadCommand.Load() == nil:
 			filter.SetDragFileUploadCommand(value)
 		case name == "progresscolorpair" && filter.progressColorPair.Load() == nil:
 			filter.SetProgressColorPair(value)
 		}
+	}
+	if err := scanner.Err(); err != nil {
+		warning("read config %q failed: %v", path, err)
 	}
 }
 
@@ -463,17 +508,20 @@ func (filter *TrzszFilter) downloadFiles(transfer *trzszTransfer) error {
 	return transfer.clientExit(formatSavedFiles(localNames, path))
 }
 
-func (filter *TrzszFilter) uploadFiles(transfer *trzszTransfer, directory bool) error {
-	paths, err := filter.chooseUploadPaths(directory)
-	if err == errUserCanceled {
-		return transfer.sendAction(false, filter.trigger.version, filter.trigger.winServer)
-	}
-	if err != nil {
-		return err
-	}
-	files, err := checkPathsReadable(paths, directory)
-	if err != nil {
-		return err
+func (filter *TrzszFilter) uploadFiles(transfer *trzszTransfer, directory bool, filesSpecified bool) error {
+	var files []*sourceFile
+	if !filesSpecified {
+		paths, err := filter.chooseUploadPaths(directory)
+		if err == errUserCanceled {
+			return transfer.sendAction(false, filter.trigger.version, filter.trigger.winServer)
+		}
+		if err != nil {
+			return err
+		}
+		files, err = checkPathsReadable(paths, directory)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := transfer.sendAction(true, filter.trigger.version, filter.trigger.winServer); err != nil {
@@ -482,6 +530,19 @@ func (filter *TrzszFilter) uploadFiles(transfer *trzszTransfer, directory bool) 
 	config, err := transfer.recvConfig()
 	if err != nil {
 		return err
+	}
+
+	if filesSpecified {
+		if len(config.ClientFiles) == 0 {
+			return simpleTrzszError("No files specified to upload")
+		}
+		if err := filter.checkAutoUploadAllowed(config.ClientFiles); err != nil {
+			return err
+		}
+		files, err = checkPathsReadable(config.ClientFiles, directory)
+		if err != nil {
+			return err
+		}
 	}
 
 	if config.Overwrite {
@@ -498,6 +559,33 @@ func (filter *TrzszFilter) uploadFiles(transfer *trzszTransfer, directory bool) 
 		return err
 	}
 	return transfer.clientExit(formatSavedFiles(remoteNames, ""))
+}
+
+func (filter *TrzszFilter) checkAutoUploadAllowed(files []string) error {
+	allowedDirs := filter.allowedAutoUploadDirs.Load()
+	if allowedDirs == nil || len(*allowedDirs) == 0 {
+		return simpleTrzszError("Auto upload is disabled: no allowed upload directories configured")
+	}
+
+	for _, file := range files {
+		if !filepath.IsAbs(file) {
+			return simpleTrzszError("File path must be absolute: %s", file)
+		}
+
+		allowed := false
+		for _, absDir := range *allowedDirs {
+			if isPathWithinDir(file, absDir) {
+				allowed = true
+				break
+			}
+		}
+
+		if !allowed {
+			return simpleTrzszError("File is outside the allowed auto upload directories: %s", file)
+		}
+	}
+
+	return nil
 }
 
 func (filter *TrzszFilter) handleTrzsz() {
@@ -540,11 +628,13 @@ func (filter *TrzszFilter) handleTrzsz() {
 		case 'S':
 			err = filter.downloadFiles(transfer)
 		case 'R':
-			err = filter.uploadFiles(transfer, false)
+			err = filter.uploadFiles(transfer, false, false)
 			filter.setOneTimeUploadResult(err)
 		case 'D':
-			err = filter.uploadFiles(transfer, true)
+			err = filter.uploadFiles(transfer, true, false)
 			filter.setOneTimeUploadResult(err)
+		case 'F':
+			err = filter.uploadFiles(transfer, true, true)
 		}
 		if err != nil {
 			transfer.clientError(err)
@@ -583,7 +673,7 @@ func (filter *TrzszFilter) uploadDragFiles(dragInfo *dragFilesInfo) {
 				_, _ = os.Stderr.Write(ack)
 			}
 		}
-		_ = writeAll(filter.serverIn, []byte(fmt.Sprintf("send -t %%%s 0x3\r", dragInfo.tmuxPaneID)))
+		_ = writeAll(filter.serverIn, fmt.Appendf(nil, "send -t %%%s 0x3\r", dragInfo.tmuxPaneID))
 		time.Sleep(300 * time.Millisecond) // sleep a bit longer to avoid iTerm2 receiving %begin/%end
 	} else {
 		_ = writeAll(filter.serverIn, []byte{0x03})

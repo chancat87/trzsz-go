@@ -452,6 +452,35 @@ func getNewName(path, name string) (string, error) {
 	return "", simpleTrzszError("Fail to assign new file name to %s", name)
 }
 
+func resolveAbsoluteDir(path string) (string, error) {
+	path = resolveHomeDir(path)
+	if !filepath.IsAbs(path) {
+		return "", fmt.Errorf("path %q is not an absolute path", path)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", fmt.Errorf("path %q is invalid: %w", path, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("path %q is not a directory", path)
+	}
+	return path, nil
+}
+
+func isPathWithinDir(absPath, absDir string) bool {
+	rel, err := filepath.Rel(absDir, absPath)
+	if err != nil {
+		return false
+	}
+
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
+}
+
+func warning(format string, a ...any) {
+	msg := "Warning: " + fmt.Sprintf(format, a...)
+	fmt.Fprintf(os.Stderr, "\r\033[0;33m%s\033[0m\033[K\r\n", msg)
+}
+
 type tmuxModeType int
 
 const (
@@ -672,8 +701,8 @@ func newTrzszDetector(relay, tmux bool) *trzszDetector {
 	return &trzszDetector{relay, tmux, make(map[string]int)}
 }
 
-var trzszRegexp = regexp.MustCompile(`::TRZSZ:TRANSFER:([SRD]):(\d+\.\d+\.\d+)(:\d+)?(:\d+)?`)
-var uniqueIDRegexp = regexp.MustCompile(`::TRZSZ:TRANSFER:[SRD]:\d+\.\d+\.\d+:(\d{13}\d*)`)
+var trzszRegexp = regexp.MustCompile(`::TRZSZ:TRANSFER:([SRDF]):(\d+\.\d+\.\d+)(:\d+)?(:\d+)?`)
+var uniqueIDRegexp = regexp.MustCompile(`::TRZSZ:TRANSFER:[SRDF]:\d+\.\d+\.\d+:(\d{13}\d*)`)
 var tmuxControlModeRegexp = regexp.MustCompile(`((%output( %\d+ ))|(%extended-output( %\d+ )\d+ .*: )).*::TRZSZ:TRANSFER:`)
 
 func (detector *trzszDetector) rewriteTrzszTrigger(buf []byte) []byte {
